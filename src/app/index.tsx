@@ -1,21 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useProfile } from '../context/ProfileContext';
 
 export default function HomeScreen() {
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<any>(null);
+  const { profiles, setProfiles, selectedProfile, setSelectedProfile } = useProfile();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Busca os perfis disponíveis na API
     fetch('https://curriculo-express-gold.vercel.app/api/profiles')
       .then((res) => res.json())
       .then((data) => {
         const results = Array.isArray(data) ? data : data.data || data.profiles || [];
         setProfiles(results);
-        if (results.length > 0) {
-          setSelectedProfile(results[0]); // Define o primeiro como padrão
+        if (results.length > 0 && !selectedProfile) {
+          setSelectedProfile(results[0]);
         }
         setLoading(false);
       })
@@ -25,39 +24,59 @@ export default function HomeScreen() {
       });
   }, []);
 
+  const getCargo = (item: any) => {
+    return item?.role || item?.cargo || item?.position || item?.title || 'Cargo não especificado';
+  };
+
+  const getEmail = (item: any) => {
+    return item?.email || item?.mail || '';
+  };
+
+  const getResumo = (item: any) => {
+    return item?.summary || item?.bio || item?.resumo || '';
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>A carregar perfis...</Text>
+        <Text style={styles.loadingText}>A carregar perfis do banco...</Text>
       </View>
     );
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Cabeçalho de Boas-Vindas */}
       <View style={styles.headerCard}>
-        <Ionicons name="person-circle-outline" size={64} color="#007AFF" />
-        <Text style={styles.welcomeTitle}>Currículo Profissional</Text>
-        <Text style={styles.welcomeSubtitle}>Selecione abaixo o perfil desejado para visualizar os dados dinâmicos:</Text>
+        <Ionicons name="person-circle" size={72} color="#007AFF" />
+        <Text style={styles.welcomeTitle}>Seletor de Perfis</Text>
+        <Text style={styles.welcomeSubtitle}>Selecione abaixo o perfil para atualizar o currículo em tempo real:</Text>
       </View>
 
-      {/* Perfil Ativo em Destaque */}
       {selectedProfile && (
         <View style={styles.activeBanner}>
           <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>PERFIL ATIVO</Text>
+            <Text style={styles.activeBadgeText}>PERFIL ATIVO NO APP</Text>
           </View>
           <Text style={styles.activeName}>{selectedProfile.name || selectedProfile.nome}</Text>
-          <Text style={styles.activeRole}>{selectedProfile.role || selectedProfile.cargo || 'Desenvolvedor Full-Stack'}</Text>
+          <Text style={styles.activeRole}>{getCargo(selectedProfile)}</Text>
+          
+          {getEmail(selectedProfile) ? (
+            <View style={styles.infoRow}>
+              <Ionicons name="mail-outline" size={16} color="#555" />
+              <Text style={styles.infoText}>{getEmail(selectedProfile)}</Text>
+            </View>
+          ) : null}
+
+          {getResumo(selectedProfile) ? (
+            <Text style={styles.activeSummary}>{getResumo(selectedProfile)}</Text>
+          ) : null}
         </View>
       )}
 
-      {/* Lista de Seleção de Perfis */}
-      <Text style={styles.sectionTitle}>Perfis Disponíveis no Sistema</Text>
+      <Text style={styles.sectionTitle}>Alternar Perfil</Text>
       
-      {profiles.map((profile, index) => {
+      {Array.isArray(profiles) && profiles.map((profile, index) => {
         const isSelected = selectedProfile?.id === profile.id;
         return (
           <TouchableOpacity
@@ -69,13 +88,13 @@ export default function HomeScreen() {
               <Text style={[styles.profileName, isSelected && styles.profileNameSelected]}>
                 {profile.name || profile.nome}
               </Text>
-              <Text style={styles.profileDescription}>
-                {profile.bio || profile.descricao || 'Toque para ativar este perfil'}
+              <Text style={styles.profileDescription} numberOfLines={1}>
+                {getCargo(profile)}
               </Text>
             </View>
             <Ionicons
-              name={isSelected ? 'checkmark-circle' : 'chevron-forward'}
-              size={24}
+              name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+              size={22}
               color={isSelected ? '#007AFF' : '#ccc'}
             />
           </TouchableOpacity>
@@ -92,23 +111,21 @@ const styles = StyleSheet.create({
   headerCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    marginBottom: 16,
+    elevation: 2,
   },
-  welcomeTitle: { fontSize: 22, fontWeight: 'bold', color: '#111', marginTop: 10 },
-  welcomeSubtitle: { fontSize: 13, color: '#666', textAlign: 'center', marginTop: 6, lineHeight: 18 },
+  welcomeTitle: { fontSize: 20, fontWeight: 'bold', color: '#111', marginTop: 8 },
+  welcomeSubtitle: { fontSize: 12, color: '#666', textAlign: 'center', marginTop: 4 },
   activeBanner: {
-    backgroundColor: '#eef4ff',
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 24,
-    borderWidth: 1.5,
+    marginBottom: 20,
+    borderWidth: 2,
     borderColor: '#007AFF',
+    elevation: 3,
   },
   activeBadge: {
     backgroundColor: '#007AFF',
@@ -116,29 +133,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  activeBadgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  activeName: { fontSize: 18, fontWeight: 'bold', color: '#111' },
-  activeRole: { fontSize: 14, color: '#007AFF', marginTop: 2, fontWeight: '500' },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 12 },
+  activeBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
+  activeName: { fontSize: 20, fontWeight: 'bold', color: '#111' },
+  activeRole: { fontSize: 14, color: '#007AFF', marginTop: 2, fontWeight: '600', marginBottom: 8 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  infoText: { fontSize: 13, color: '#444', marginLeft: 6 },
+  activeSummary: { fontSize: 13, color: '#555', marginTop: 6, lineHeight: 18, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#333', marginBottom: 10 },
   profileCard: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#e1e4e8',
   },
-  profileCardSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#f8fbff',
-  },
+  profileCardSelected: { borderColor: '#007AFF', backgroundColor: '#f8fbff' },
   profileInfo: { flex: 1, marginRight: 10 },
   profileName: { fontSize: 15, fontWeight: '600', color: '#333' },
   profileNameSelected: { color: '#007AFF', fontWeight: 'bold' },
-  profileDescription: { fontSize: 12, color: '#666', marginTop: 4 },
+  profileDescription: { fontSize: 12, color: '#666', marginTop: 2 },
 });
